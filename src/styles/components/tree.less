@@ -1,6 +1,7 @@
 @tree-prefix-cls: ~"@{css-prefix}tree";
 
 .@{tree-prefix-cls} {
+    position: relative;
     ul{
         list-style: none;
         margin: 0;
@@ -67,12 +68,16 @@
         //    }
         //}
         &-disabled{
-            cursor: @cursor-disabled;
+            //cursor: @cursor-disabled;
         }
     }
 
     .@{checkbox-prefix-cls}-wrapper{
         margin-right: 4px;
         margin-left: 4px;
+    }
+
+    &-context-menu{
+        position: absolute;
     }
 }

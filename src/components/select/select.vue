@@ -177,6 +177,11 @@
                 type: [String, Number, Array],
                 default: ''
             },
+            // 4.4.0
+            defaultLabel: {
+                type: [String, Number, Array],
+                default: ''
+            },
             multiple: {
                 type: Boolean,
                 default: false
@@ -273,6 +278,12 @@
                 default () {
                     return !this.$IVIEW ? true : this.$IVIEW.capture;
                 }
+            },
+            // 4.2.0
+            // 搜索时，只按 label 进行搜索
+            filterByLabel: {
+                type: Boolean,
+                default: false
             }
         },
         mounted(){
@@ -287,6 +298,24 @@
             }
 
             this.checkUpdateStatus();
+
+            // remote search, set default-label
+            if (this.remote && this.value && this.defaultLabel) {
+                if (!this.multiple) {
+                    this.query = this.defaultLabel;
+                } else if (this.multiple && (this.defaultLabel instanceof Array) && this.value.length === this.defaultLabel.length) {
+                    const values = this.value.map((item, index) => {
+                        return {
+                            value: item,
+                            label: this.defaultLabel[index]
+                        };
+                    });
+                    this.$emit('on-set-default-options', JSON.parse(JSON.stringify(values)));
+                    setTimeout(() => {
+                        this.values = values;
+                    });
+                }
+            }
         },
         data () {
 
@@ -357,7 +386,7 @@
                     state = true;
                     const $options = findComponentsDownward(this, 'iOption');
                     if ($options && $options.length) {
-                        if ($options.find(item => item.showLabel === this.query)) state = false;
+                        if ($options.find(item => item.optionLabel === this.query)) state = false;
                     }
                 }
                 return  state;
@@ -474,6 +503,8 @@
                 }
             },
             clearSingleSelect(){ // PUBLIC API
+                // fix #446
+                if (!this.multiple) this.$emit('input', '');
                 this.$emit('on-clear');
                 this.hideMenu();
                 if (this.clearable) this.reset();
@@ -482,9 +513,12 @@
                 const option = this.flatOptions.find(({componentOptions}) => componentOptions.propsData.value === value);
                 if (!option) return null;
                 const label = getOptionLabel(option);
+                // 修复多选时，选项有disabled属性，选中项仍然能删除的 bug
+                const disabled = option.componentOptions.propsData.disabled;
                 return {
                     value: value,
                     label: label,
+                    disabled: disabled
                 };
             },
             getInitialValue(){
@@ -528,7 +562,7 @@
                     const nodeText = node.elm ? node.elm.textContent : node.text;
                     return `${str} ${nodeText}`;
                 }, '') || '';
-                const stringValues = JSON.stringify([value, label, textContent]);
+                const stringValues = this.filterByLabel ? [label].toString() : [value, label, textContent].toString();
                 const query = this.query.toLowerCase().trim();
                 return stringValues.toLowerCase().includes(query);
             },
@@ -591,7 +625,8 @@
             },
             handleKeydown (e) {
                 const key = e.key || e.code;
-                if (key === 'Backspace'){
+                const keyCode = e.keyCode || e.which;
+                if (key === 'Backspace' || keyCode===8){
                     return; // so we don't call preventDefault
                 }
 
